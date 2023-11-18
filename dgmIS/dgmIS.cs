@@ -1,5 +1,6 @@
 ﻿using dgmIS.DBconnect;
 using dgmIS.Utilities;
+using System.Text.RegularExpressions;
 
 var username = Util.InputMenuString("Iveskite prisijungimo varda");
 var password = Util.InputMenuString("Iveskite slaptazodi", true);
@@ -47,8 +48,8 @@ switch (DB._access)
 		switch (selection)
 		{
 			case 0:
-				Util.displayData(Util.convertToStrList(await DB.listGradesForStudent()), new List<string> { "Studento numeris",
-					"Paskaitos numeris", "Destytojo numeris", "Pazymys" });
+				await Util.displayData(Util.convertToStrList(await DB.listGradesForStudent()), new Dictionary<string, Func<string, Task<string>>> { { "Studentas", DB.getStudent },
+					{ "Paskaita", DB.getLecture }, { "Destytojas", DB.getLecturer }, { "Pazymys", DB.getGrade } });
 				break;
 
 
@@ -62,12 +63,32 @@ switch (DB._access)
 		switch (selection)
 		{
 			case 0:
-				//DB.createGrade();
+				var lecturerID = await DB.getLecturerID(username);
 
+				var lectureID = (await DB.getLectureIDs())[Util.SelectionMenu("Pasirinkite grupe", await DB.getLectures())];
+
+				var groupID = (await DB.getGroupIDs(lectureID))[Util.SelectionMenu("Pasirinkite grupe", await DB.getGroups(lectureID))];
+
+				var studentID = (await DB.getStudentsFromGroup(groupID))[Util.SelectionMenu("Pasirinkite studenta", await DB.getStudentFromGroupLogins(groupID))];
+
+				var grade = Util.InputMenu("Iveskite pazymi, kuri norite iteikti studentui");
+
+				await DB.createGrade(studentID, lectureID, lecturerID, grade);
 				break;
 			case 1:
-				//DB.updateGrade();
+				lecturerID = await DB.getLecturerID(username);
 
+				lectureID = (await DB.getLectureIDs())[Util.SelectionMenu("Pasirinkite grupe", await DB.getLectures())];
+
+				groupID = (await DB.getGroupIDs(lectureID))[Util.SelectionMenu("Pasirinkite grupe", await DB.getGroups(lectureID))];
+
+				studentID = (await DB.getStudentsFromGroup(groupID))[Util.SelectionMenu("Pasirinkite studenta", await DB.getStudentFromGroupLogins(groupID))];
+
+				var gradeID = (await DB.getGradeIDsForStudent(studentID, lectureID, lecturerID))[Util.SelectionMenu("Pasirinkite pazymi, kuri norite pakeisti", await DB.getGradesForStudent(studentID, lectureID, lecturerID))];
+
+				grade = Util.InputMenu("Iveskite nauja pazymi, kuri norite iteikti studentui");
+
+				await DB.updateGrade(gradeID, grade);
 				break;
 
 
@@ -87,12 +108,21 @@ switch (DB._access)
 
 				Console.WriteLine(string.Format("Studentas sekmingai sukurtas, jo paskyros prisijungimas yra: \nPrisijungimo vardas: {0}\nSlaptazodis: {1}", fName, lName));
 				break;
+			case 1:
+				var groupID = (await DB.getGroupIDs())[Util.SelectionMenu("Pasirinkite grupe", await DB.getGroups())];
+				var studentID = (await DB.getStudentsFromGroup(groupID))[Util.SelectionMenu("Pasirinkite studenta", await DB.getStudentFromGroupLogins(groupID))];
+
+				DB.deleteStudent(studentID);
+				break;
 			case 5:
 				fName = Util.InputMenuString("Iveskite destytojo varda");
 				lName = Util.InputMenuString("Iveskite destytojo pavarde");
 				await DB.createLecturer(fName, lName);
 
 				Console.WriteLine(string.Format("Destytojas sekmingai sukurtas, jo paskyros prisijungimas yra: \nPrisijungimo vardas: {0}\nSlaptazodis: {1}", fName, lName));
+				break;
+			case 6:
+
 				break;
 
 			default:

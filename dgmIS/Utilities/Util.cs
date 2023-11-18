@@ -1,4 +1,7 @@
-﻿namespace dgmIS.Utilities
+﻿using MySqlX.XDevAPI.Relational;
+using System.Security.Policy;
+
+namespace dgmIS.Utilities
 {
 	public static class Util
 	{
@@ -75,6 +78,10 @@
 
 			return selection;
 		}
+		public static string getKeyName(Dictionary<string, Func<string, Task<string>>> data, int index)
+		{
+			return data.Keys.ElementAt(index);
+		}
 		public static List<List<string>> convertToStrList(List<List<object>> data)
 		{
 			var list = new List<List<string>>();
@@ -86,6 +93,24 @@
 				foreach (object str in item)
 				{
 					temp.Add(str.ToString());
+				}
+
+				list.Add(temp);
+			}
+
+			return list;
+		}
+		public static List<List<int>> convertToIntList(List<List<object>> data)
+		{
+			var list = new List<List<int>>();
+
+			foreach (List<object> item in data)
+			{
+				var temp = new List<int>();
+
+				foreach (object str in item)
+				{
+					temp.Add(int.Parse(str.ToString()));
 				}
 
 				list.Add(temp);
@@ -111,16 +136,16 @@
 
 			return rows;
 		}
-		public static int maxCharInColumn(List<string> data)
+		public static async Task<int> maxCharInColumn(List<string> data, Func<string, Task<string>> convert)
 		{
 			int max = 0;
 			foreach (string row in data)
 			{
-				max = Math.Max(max, row.Length);
+				max = Math.Max(max, convert != default ? (await convert.Invoke(row)).Length : row.Length);
 			}
 			return max;
 		}
-		public static void displayData(List<List<string>> data, List<string> columns)
+		public static async Task displayData(List<List<string>> data, Dictionary<string, Func<string, Task<string>>> columns)
 		{
 			List<int> columnSizes = new();
 
@@ -128,32 +153,33 @@
 
 			foreach (var row in flippedData)
 			{
-				columnSizes.Add(maxCharInColumn(row));
+				columnSizes.Add(await maxCharInColumn(row, columns.Values.ElementAt(flippedData.IndexOf(row))));
 			}
 
 			for (int i = -1; i < data.Count; i++)
 			{
 				for (int j = 0; j < (data.Count > 0 ? data[Math.Max(0, i)].Count : columns.Count); j++)
 				{
-					var size = Math.Max(columnSizes.Count > 0 ? columnSizes[j] : 0, columns[j].Length + 3);
+					var key = getKeyName(columns, j);
+
+					var size = Math.Max(columnSizes.Count > 0 ? columnSizes[j] + 3 : 0, key.Length + 3);
 
 					if (i == -1)
 					{
-						Console.Write(columns[j]);
-						for (int k = columns[j].Length; k < size; k++)
+						Console.Write(key);
+						for (int k = key.Length; k < size; k++)
 						{
 							Console.Write(" ");
 						}
 						continue;
 					}
-					Console.Write(data[i][j]);
-					for (int k = data[i][j].Length; k < size; k++)
+					Console.Write(columns[key] != default ? await columns[key].Invoke(data[i][j]) : data[i][j]);
+					for (int k = columns[key] != default ? (await columns[key].Invoke(data[i][j])).Length : data[i][j].Length; k < size; k++)
 					{
 						Console.Write(" ");
 					}
 
 				}
-
 				Console.WriteLine();
 			}
 		}
