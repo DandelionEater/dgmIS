@@ -1,8 +1,5 @@
 ﻿using dgmIS.Utilities;
 using MySql.Data.MySqlClient;
-using Org.BouncyCastle.Bcpg.Sig;
-using System.Data;
-using System.Text.RegularExpressions;
 
 namespace dgmIS.DBconnect
 {
@@ -176,7 +173,7 @@ namespace dgmIS.DBconnect
 
 		#region Lecturer commands
 
-		public async Task createLecturer(string fName, string lName, string lGroup = "")
+		public async Task createLecturer(string fName, string lName)
 		{
 			if (_access != Access.Admin)
 			{
@@ -186,7 +183,7 @@ namespace dgmIS.DBconnect
 
 			await createQuerry(string.Format("DROP USER IF EXISTS '{0}'", fName));
 			await createQuerry(string.Format("CREATE USER '{0}' IDENTIFIED BY '{1}';", fName, lName));
-			await createQuerry(string.Format("INSERT INTO sys.lecturers(fName, lName, lGroup) VALUES('{0}', '{1}', '{2}')", new object[3] { fName, lName, lGroup }));
+			await createQuerry(string.Format("INSERT INTO sys.lecturers(fName, lName) VALUES('{0}', '{1}')", new object[2] { fName, lName }));
 			await createQuerry(string.Format("GRANT INSERT, UPDATE, SELECT ON sys.grades TO '{0}'", fName));
 			await createQuerry(string.Format("GRANT SELECT ON * TO '{0}'", fName));
 		}
@@ -214,19 +211,7 @@ namespace dgmIS.DBconnect
 			}
 
 			await createQuerry(string.Format("UPDATE sys.lectures SET lecturerID = '{0}' WHERE lectureID = '{1}'", lecturerID, lectureID));
-		}
-
-		public async Task<List<List<object>>> listLecturers()
-		{
-			if (_access < Access.Lecturer)
-			{
-				Console.WriteLine("Neturite teisiu panaudoti sia operacija");
-				return new List<List<object>>();
-			}
-
-			var lecturersList = await getAll("SELECT fName AS Vardas, lName AS Pavarde, lGroup AS Grupe FROM sys.lecturers");
-
-			return lecturersList;
+			await createQuerry(string.Format("UPDATE sys.grades SET lecturerID = '{0}' WHERE lectureID = '{1}'", lecturerID, lectureID));
 		}
 
 		public async Task<string> getLecturer(string lecturerID)
@@ -234,6 +219,38 @@ namespace dgmIS.DBconnect
 			string fName = await getString(string.Format("SELECT fName FROM sys.lecturers WHERE lecturerID = '{0}'", lecturerID));
 			string lName = await getString(string.Format("SELECT lName FROM sys.lecturers WHERE lecturerID = '{0}'", lecturerID));
 			return fName + " " + lName;
+		}
+
+		public async Task<int> getLecturerID(string fName)
+		{
+			return await getInt(string.Format("SELECT lecturerID FROM sys.lecturers WHERE fName = '{0}'", fName));
+		}
+
+		public async Task<List<int>> getLecturerIDs()
+		{
+			var lecturerIDs = new List<int>();
+
+			foreach (var id in Util.convertToIntList(await getAll("SELECT lecturerID FROM sys.lecturers")))
+			{
+				lecturerIDs.Add(id[0]);
+			}
+			return lecturerIDs;
+		}
+
+		public async Task<List<string>> getLecturerNames()
+		{
+			var lecturerIDs = await getLecturerIDs();
+
+			var lecturerNames = new List<string>();
+
+			foreach (var lecturerID in lecturerIDs)
+			{
+				var fName = await getString(string.Format("SELECT fName FROM sys.lecturers WHERE lecturerID = {0}", lecturerID));
+				var lName = await getString(string.Format("SELECT lName FROM sys.lecturers WHERE lecturerID = {0}", lecturerID));
+				lecturerNames.Add(fName + " " + lName);
+			}
+
+			return lecturerNames;
 		}
 
 		#endregion
@@ -267,8 +284,9 @@ namespace dgmIS.DBconnect
 
 			var sName = await getString(string.Format("SELECT fName FROM sys.students WHERE studentID = '{0}'", studentID));
 			await createQuerry(string.Format("DELETE FROM sys.students WHERE studentID = '{0}'", studentID));
+			await createQuerry(string.Format("DELETE FROM sys.grades WHERE studentID = '{0}'", studentID));
 
-			await createQuerry("DROP USER " + sName);
+			await createQuerry("DROP USER '" + sName+ "'");
 		}
 
 		private string createSlogin()
@@ -290,8 +308,49 @@ namespace dgmIS.DBconnect
 			return await getAll(string.Format("SELECT studentID, lectureID, lecturerID, gradeID FROM sys.grades WHERE studentID = '{0}'", sID));
 		}
 
+		public async Task<string> getStudent(string studentID)
+		{
+			return await getString(string.Format("SELECT sLogin FROM sys.students WHERE studentID = '{0}'", studentID));
+		}
+
+		public async Task<List<int>> getStudentsFromGroup(int groupID)
+		{
+			var studentIDs = new List<int>();
+
+			foreach (var id in Util.convertToIntList(await getAll(string.Format("SELECT studentID FROM sys.students WHERE sGroupID = '{0}'", groupID))))
+			{
+				studentIDs.Add(id[0]);
+			}
+			return studentIDs;
+		}
+
+		public async Task assignStudentToGroup(int studentID, int sGroupID)
+		{
+			await createQuerry(string.Format("UPDATE sys.students SET sGroupID = '{0}' WHERE studentID = '{1}'", sGroupID, studentID));
+		}
+
+		public async Task<int> getStudentID(string sLogin)
+		{
+			return await getInt(string.Format("SELECT studentID FROM sys.students WHERE sLogin = '{0}'", sLogin));
+		}
+
+		public async Task<List<string>> getStudentFromGroupLogins(int groupID)
+		{
+			var studentIDs = await getStudentsFromGroup(groupID);
+
+			var students = new List<string>();
+
+			foreach (var studentID in studentIDs)
+			{
+				students.Add(await getString(string.Format("SELECT sLogin FROM sys.students WHERE studentID = {0}", studentID)));
+			}
+
+			return students;
+		}
 
 		#endregion
+
+		#region Gruop commands
 
 		public async Task createGroup(string sGroupName)
 		{
@@ -315,111 +374,11 @@ namespace dgmIS.DBconnect
 			await createQuerry(string.Format("DELETE FROM sys.sgroups WHERE sGroupID = '{0}'", sGroupID));
 		}
 
-		public async Task createLecture(int lecturerID, string lectureName, int sGroupID)
-		{
-			if (_access != Access.Admin)
-			{
-				Console.WriteLine("Neturite teisiu panaudoti sia operacija");
-				return;
-			}
-
-			await createQuerry(string.Format("INSERT INTO sys.lectures(lecturerID, lectureName, sGroupID) VALUES ('{0}', '{1}', '{2}')", lecturerID, lectureName, sGroupID));
-		}
-
-		public async Task deleteLecture(int lectureID)
-		{
-			if (_access != Access.Admin)
-			{
-				Console.WriteLine("Neturite teisiu panaudoti sia operacija");
-				return;
-			}
-
-			await createQuerry(string.Format("DELETE FROM sys.lectures WHERE lectureID = '{0}'", lectureID));
-		}
-		
-		public async Task assignLecture(int lectureID, int sGroupID)
-		{
-			if (_access != Access.Admin)
-			{
-				Console.WriteLine("Neturite teisiu panaudoti sia operacija");
-				return;
-			}
-
-			await createQuerry(string.Format("UPDATE sys.lectures SET sGroupID = '{0}' WHERE lectureID = '{1}'", sGroupID, lectureID));
-		}
-
-		public async Task createGrade(int studentID, int lectureID, int lecturerID, int grade)
-		{
-			if (_access < Access.Lecturer)
-			{
-				Console.WriteLine("Neturite teisiu panaudoti sia operacija");
-				return;
-			}
-
-			await createQuerry(string.Format("INSERT INTO sys.grades(studentID, lectureID, lecturerID, grade) " +
-				"VALUES ('{0}', '{1}', '{2}', '{3}')", new object[4] { studentID, lectureID, lecturerID, grade }));
-		}
-
-		public async Task updateGrade(int gradeID, int grade)
-		{
-			if (_access < Access.Lecturer)
-			{
-				Console.WriteLine("Neturite teisiu panaudoti sia operacija");
-				return;
-			}
-
-			await createQuerry(string.Format("UPDATE sys.grades SET grade = '{0}' WHERE gradeID = '{1}'", grade, gradeID));
-		}
-
-		public async Task<List<List<object>>> listStudents()
-		{
-			if (_access < Access.Lecturer)
-			{
-				Console.WriteLine("Neturite teisiu panaudoti sia operacija");
-				return new List<List<object>>();
-			}
-
-			var studentsList = await getAll("SELECT fName AS Vardas, lName AS Pavarde, sGroupID AS Grupe FROM sys.students");
-
-			return studentsList;
-		}
-		
-		public async Task<List<List<string>>> listGradesForStudent(string fName)
-		{
-			if (_access < Access.Lecturer)
-			{
-				Console.WriteLine("Neturite teisiu panaudoti sia operacija");
-				return new List<List<string>>();
-			}
-
-			return Util.convertToStrList(await getAll(string.Format("SELECT * FROM sys.grades WHERE fName = '{0}'", fName)));
-		}
-
-		public async Task<List<List<object>>> listLectures()
-		{
-			return await getAll(string.Format("SELECT * FROM sys.lectures WHERE sGroupID = '{0}'", getGroupID(_u)));
-		}
-
 		public async Task<int> getGroupID(string username)
 		{
 			var id = await getInt(string.Format("SELECT sGroupID from sys.students WHERE fName = '{0}'", username));
 
 			return id;
-		}
-		
-		public async Task<string> getLecture(string lectureID)
-		{
-			return await getString(string.Format("SELECT lectureName FROM sys.lectures WHERE lectureID = '{0}'", lectureID));
-		}
-
-		public async Task<string> getStudent(string studentID)
-		{
-			return await getString(string.Format("SELECT sLogin FROM sys.students WHERE studentID = '{0}'", studentID));
-		}
-
-		public async Task<string> getGrade(string gradeID)
-		{
-			return (await getInt(string.Format("SELECT grade FROM sys.grades WHERE gradeID = '{0}'", gradeID))).ToString();
 		}
 
 		public async Task<List<int>> getGroupIDs()
@@ -435,22 +394,22 @@ namespace dgmIS.DBconnect
 			return groupIDs;
 		}
 
-		public async Task<List<int>> getGroupIDsAdmin()
+		public async Task<List<int>> getGroupIDs(int lectureID)
 		{
 			var groupIDs = new List<int>();
 
-			foreach (var id in Util.convertToIntList(await getAll("SELECT sGroupID FROM sys.lectures")))
+			foreach (var id in Util.convertToIntList(await getAll(string.Format("SELECT sGroupID FROM sys.lectures WHERE lectureID = '{0}'", lectureID))))
 			{
 				groupIDs.Add(id[0]);
 			}
 			return groupIDs;
 		}
 
-		public async Task<List<int>> getGroupIDs(int lectureID)
+		public async Task<List<int>> getGroupIDsAdmin()
 		{
 			var groupIDs = new List<int>();
 
-			foreach(var id in Util.convertToIntList(await getAll(string.Format("SELECT sGroupID FROM sys.lectures WHERE lectureID = '{0}'", lectureID))))
+			foreach (var id in Util.convertToIntList(await getAll("SELECT sGroupID FROM sys.sgroups")))
 			{
 				groupIDs.Add(id[0]);
 			}
@@ -477,7 +436,7 @@ namespace dgmIS.DBconnect
 
 			var groups = new List<string>();
 
-			foreach(var groupID in groupIDs)
+			foreach (var groupID in groupIDs)
 			{
 				groups.Add(await getString(string.Format("SELECT sGroupName FROM sys.sgroups WHERE sGroupID = {0}", groupID)));
 			}
@@ -485,34 +444,48 @@ namespace dgmIS.DBconnect
 			return groups;
 		}
 
-		public async Task<int> getLecturerID(string fName)
-		{
-			return await getInt(string.Format("SELECT lecturerID FROM sys.lecturers WHERE fName = '{0}'", fName));
-		}
+		#endregion
 
-		public async Task<List<int>> getStudentsFromGroup(int groupID)
-		{
-			var studentIDs = new List<int>();
+		#region Lecture commands
 
-			foreach (var id in Util.convertToIntList(await getAll(string.Format("SELECT studentID FROM sys.students WHERE sGroupID = '{0}'", groupID))))
+		public async Task createLecture(int lecturerID, string lectureName, int sGroupID)
+		{
+			if (_access != Access.Admin)
 			{
-				studentIDs.Add(id[0]);
-			}
-			return studentIDs;
-		}
-
-		public async Task<List<string>> getStudentFromGroupLogins(int groupID)
-		{
-			var studentIDs = await getStudentsFromGroup(groupID);
-
-			var students = new List<string>();
-
-			foreach (var studentID in studentIDs)
-			{
-				students.Add(await getString(string.Format("SELECT sLogin FROM sys.students WHERE studentID = {0}", studentID)));
+				Console.WriteLine("Neturite teisiu panaudoti sia operacija");
+				return;
 			}
 
-			return students;
+			await createQuerry(string.Format("INSERT INTO sys.lectures(lecturerID, lectureName, sGroupID) VALUES ('{0}', '{1}', '{2}')", lecturerID, lectureName, sGroupID));
+		}
+
+		public async Task deleteLecture(int lectureID)
+		{
+			if (_access != Access.Admin)
+			{
+				Console.WriteLine("Neturite teisiu panaudoti sia operacija");
+				return;
+			}
+
+			await createQuerry(string.Format("DELETE FROM sys.lectures WHERE lectureID = '{0}'", lectureID));
+			await createQuerry(string.Format("DELETE FROM sys.grades WHERE lectureID = '{0}'", lectureID));
+		}
+
+		public async Task assignLecture(int lectureID, int sGroupID)
+		{
+			if (_access != Access.Admin)
+			{
+				Console.WriteLine("Neturite teisiu panaudoti sia operacija");
+				return;
+			}
+
+			await createQuerry(string.Format("UPDATE sys.lectures SET sGroupID = '{0}' WHERE lectureID = '{1}'", sGroupID, lectureID));
+			await createQuerry(string.Format("DELETE FROM sys.grades WHERE lectureID = '{0}'", lectureID));
+		}
+
+		public async Task<string> getLecture(string lectureID)
+		{
+			return await getString(string.Format("SELECT lectureName FROM sys.lectures WHERE lectureID = '{0}'", lectureID));
 		}
 
 		public async Task<List<int>> getLectureIDs()
@@ -530,7 +503,7 @@ namespace dgmIS.DBconnect
 
 		public async Task<List<string>> getLectures()
 		{
-			var lectureIDs = await getGroupIDs();
+			var lectureIDs = await getLectureIDs();
 
 			var lectures = new List<string>();
 
@@ -540,6 +513,62 @@ namespace dgmIS.DBconnect
 			}
 
 			return lectures;
+		}
+
+		public async Task<List<int>> getLectureIDsFromGroup(int groupID)
+		{
+			var lectureIDs = new List<int>();
+			foreach (var id in Util.convertToIntList(await getAll(string.Format("SELECT lectureID FROM sys.lectures WHERE sGroupID = '{0}'", groupID))))
+			{
+				lectureIDs.Add(id[0]);
+			}
+			return lectureIDs;
+		}
+
+		public async Task<List<string>> getLectureNamesFromGroup(int groupID)
+		{
+			var lectureIDs = await getLectureIDsFromGroup(groupID);
+
+			var lectures = new List<string>();
+
+			foreach (var lectureID in lectureIDs)
+			{
+				lectures.Add(await getString(string.Format("SELECT lectureName FROM sys.lectures WHERE lectureID = {0}", lectureID)));
+			}
+
+			return lectures;
+		}
+
+		#endregion
+
+		#region Grade commands
+
+		public async Task createGrade(int studentID, int lectureID, int lecturerID, int grade)
+		{
+			if (_access < Access.Lecturer)
+			{
+				Console.WriteLine("Neturite teisiu panaudoti sia operacija");
+				return;
+			}
+
+			await createQuerry(string.Format("INSERT INTO sys.grades(studentID, lectureID, lecturerID, grade) " +
+				"VALUES ('{0}', '{1}', '{2}', '{3}')", new object[4] { studentID, lectureID, lecturerID, grade }));
+		}
+
+		public async Task updateGrade(int gradeID, int grade)
+		{
+			if (_access < Access.Lecturer)
+			{
+				Console.WriteLine("Neturite teisiu panaudoti sia operacija");
+				return;
+			}
+
+			await createQuerry(string.Format("UPDATE sys.grades SET grade = '{0}' WHERE gradeID = '{1}'", grade, gradeID));
+		}
+
+		public async Task<string> getGrade(string gradeID)
+		{
+			return (await getInt(string.Format("SELECT grade FROM sys.grades WHERE gradeID = '{0}'", gradeID))).ToString();
 		}
 
 		public async Task<List<int>> getGradeIDsForStudent(int studentID, int lectureID, int lecturerID)
@@ -575,5 +604,8 @@ namespace dgmIS.DBconnect
 			}
 			return grades;
 		}
+
+		#endregion
+
 	}
 }

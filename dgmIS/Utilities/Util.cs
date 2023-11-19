@@ -78,10 +78,12 @@ namespace dgmIS.Utilities
 
 			return selection;
 		}
+
 		public static string getKeyName(Dictionary<string, Func<string, Task<string>>> data, int index)
 		{
 			return data.Keys.ElementAt(index);
 		}
+
 		public static List<List<string>> convertToStrList(List<List<object>> data)
 		{
 			var list = new List<List<string>>();
@@ -100,6 +102,7 @@ namespace dgmIS.Utilities
 
 			return list;
 		}
+
 		public static List<List<int>> convertToIntList(List<List<object>> data)
 		{
 			var list = new List<List<int>>();
@@ -118,6 +121,7 @@ namespace dgmIS.Utilities
 
 			return list;
 		}
+
 		public static List<List<string>> flipRowsAndColumns(List<List<string>> data)
 		{
 			var rows = new List<List<string>>();
@@ -136,6 +140,7 @@ namespace dgmIS.Utilities
 
 			return rows;
 		}
+
 		public static async Task<int> maxCharInColumn(List<string> data, Func<string, Task<string>> convert)
 		{
 			int max = 0;
@@ -145,6 +150,7 @@ namespace dgmIS.Utilities
 			}
 			return max;
 		}
+
 		public static async Task displayData(List<List<string>> data, Dictionary<string, Func<string, Task<string>>> columns)
 		{
 			List<int> columnSizes = new();
