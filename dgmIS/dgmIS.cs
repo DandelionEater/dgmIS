@@ -74,11 +74,11 @@ namespace dmgIS
 
 							var studentID = (await DB.getStudentsFromGroup(groupID))[Util.SelectionMenu("Pasirinkite studenta", await DB.getStudentFromGroupLogins(groupID))];
 
-							var grade = Util.InputMenu("Iveskite pazymi, kuri norite iteikti studentui");
+							var grade = Util.InputMenu("Iveskite pazymi, kuri norite irasyti studentui");
 
 							await DB.createGrade(studentID, lectureID, lecturerID, grade);
 
-							Console.WriteLine(string.Format("Studentui pazimys {0} sekmingai ivestas.", grade));
+							Console.WriteLine(string.Format("Studentui pazymys {0} sekmingai ivestas.", grade));
 							break;
 
 						case 1:					//Pazymio pakeitimas
@@ -96,7 +96,7 @@ namespace dmgIS
 
 							await DB.updateGrade(gradeID, grade);
 
-							Console.WriteLine(string.Format("Studentui pazimys {0} sekmingai pakeistas.", grade));
+							Console.WriteLine(string.Format("Studentui pazymys {0} sekmingai pakeistas.", grade));
 							break;
 
 						default:
