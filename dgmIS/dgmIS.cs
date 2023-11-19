@@ -13,7 +13,7 @@ namespace dmgIS
 
 			var DB = new DBconnect(username, password);
 
-			Console.WriteLine(string.Format("Sveiki {0}!", username == "root" ? "administratoriau" : username));
+			Console.WriteLine(string.Format("Sveiki {0}!", DB._access == DBconnect.Access.Admin ? "administratoriau" : username));
 
 			start:
 
