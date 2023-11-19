@@ -13,7 +13,7 @@ namespace dgmIS.Utilities
 
 			while (!int.TryParse(Console.ReadLine(), out input))
 			{
-				Console.WriteLine("Invalid input, try again.");
+				Console.WriteLine("Blogas ivedimas, pabandykite dar karta.");
 
 				Console.Write(prompt + ": ");
 			}
@@ -66,14 +66,14 @@ namespace dgmIS.Utilities
 				Console.WriteLine(string.Format("[{0}] {1}", options.IndexOf(option), option));
 			}
 
-			Console.Write("Your selection: ");
+			Console.Write("Jusu pasirinkimas: ");
 
 			int selection = -1;
 
 			if (!int.TryParse(Console.ReadLine(), out selection))
 			{
-				Console.WriteLine("Invalid input, try again.");
-				Console.Write("Your selection: ");
+				Console.WriteLine("Blogas ivedimas, pabandykite dar karta.");
+				Console.Write("Jusu pasirinkimas: ");
 			}
 
 			return selection;

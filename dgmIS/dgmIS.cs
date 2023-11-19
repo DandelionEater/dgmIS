@@ -68,9 +68,9 @@ namespace dmgIS
 						case 0:					//Pazymio sukurimas
 							var lecturerID = await DB.getLecturerID(username);
 
-							var lectureID = (await DB.getLectureIDs())[Util.SelectionMenu("Pasirinkite paskaita", await DB.getLectures())];
+							var groupID = (await DB.getGroupIDs())[Util.SelectionMenu("Pasirinkite grupe", await DB.getGroups())];
 
-							var groupID = (await DB.getGroupIDs(lectureID))[Util.SelectionMenu("Pasirinkite grupe", await DB.getGroups(lectureID))];
+							var lectureID = (await DB.getLectureIDs(groupID))[Util.SelectionMenu("Pasirinkite paskaita", await DB.getLectures(groupID))];
 
 							var studentID = (await DB.getStudentsFromGroup(groupID))[Util.SelectionMenu("Pasirinkite studenta", await DB.getStudentFromGroupLogins(groupID))];
 
@@ -84,9 +84,9 @@ namespace dmgIS
 						case 1:					//Pazymio pakeitimas
 							lecturerID = await DB.getLecturerID(username);
 
-							lectureID = (await DB.getLectureIDs())[Util.SelectionMenu("Pasirinkite paskaita", await DB.getLectures())];
+							groupID = (await DB.getGroupIDs())[Util.SelectionMenu("Pasirinkite grupe", await DB.getGroups())];
 
-							groupID = (await DB.getGroupIDs(lectureID))[Util.SelectionMenu("Pasirinkite grupe", await DB.getGroups(lectureID))];
+							lectureID = (await DB.getLectureIDs(groupID))[Util.SelectionMenu("Pasirinkite paskaita", await DB.getLectures(groupID))];
 
 							studentID = (await DB.getStudentsFromGroup(groupID))[Util.SelectionMenu("Pasirinkite studenta", await DB.getStudentFromGroupLogins(groupID))];
 

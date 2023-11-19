@@ -488,22 +488,22 @@ namespace dgmIS.DBconnect
 			return await getString(string.Format("SELECT lectureName FROM sys.lectures WHERE lectureID = '{0}'", lectureID));
 		}
 
-		public async Task<List<int>> getLectureIDs()
+		public async Task<List<int>> getLectureIDs(int groupID)
 		{
 			var lecturerID = await getLecturerID(_u);
 
 			var lectureIDs = new List<int>();
 
-			foreach (var id in Util.convertToIntList(await getAll(string.Format("SELECT lectureID FROM sys.lectures WHERE lecturerID = '{0}'", lecturerID))))
+			foreach (var id in Util.convertToIntList(await getAll(string.Format("SELECT lectureID FROM sys.lectures WHERE (lecturerID = '{0}' AND sGroupID = '{1}')", lecturerID, groupID))))
 			{
 				lectureIDs.Add(id[0]);
 			}
 			return lectureIDs;
 		}
 
-		public async Task<List<string>> getLectures()
+		public async Task<List<string>> getLectures(int groupID)
 		{
-			var lectureIDs = await getLectureIDs();
+			var lectureIDs = await getLectureIDs(groupID);
 
 			var lectures = new List<string>();
 
